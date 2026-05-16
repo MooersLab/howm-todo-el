@@ -1,5 +1,10 @@
 # howm-todo
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Emacs](https://img.shields.io/badge/Emacs-27.1%2B-purple.svg)](https://www.gnu.org/software/emacs/)
+[![Made with Org](https://img.shields.io/badge/Made_with-Emacs_Lisp-7F5AB6.svg)](https://www.gnu.org/software/emacs/manual/html_node/elisp/index.html)
+
+
 Cross-compatible TODO prioritization for [Howm](https://kaorahi.github.io/howm/) and Org-mode.
 
 `howm-todo` lets you mark, sort, and tag TODO items with a priority cookie that both Org-mode and Howm recognize. The cookie has the form `TODO [XY]`, where `X` is an uppercase letter for the priority group and `Y` is a non-negative integer for the rank inside the group. A smaller `Y` means higher priority, so `[A1]` outranks `[A2]` which outranks `[A44]` which outranks `[B1]`.
@@ -26,8 +31,8 @@ The package also reads project names from a SQLite database you maintain for tim
 ### Manual install with the Makefile
 
 ```sh
-git clone https://github.com/blaine-mooers/howm-todo
-cd howm-todo
+git clone https://github.com/MooersLab/howm-todo-el
+cd howm-todo-el
 make compile
 make info
 sudo make install
@@ -35,7 +40,7 @@ sudo make install
 
 The default install paths are:
 
-- Elisp: `/usr/local/share/emacs/site-lisp/howm-todo`
+- Elisp: `/usr/local/share/emacs/site-lisp/howm-todo-el`
 - Info: `/usr/local/share/info`
 
 Override `PREFIX`, `ELISPDIR`, or `INFODIR` to install elsewhere. For a per-user install:
@@ -47,7 +52,7 @@ make install PREFIX=$HOME/.local
 After install, add the install directory to `load-path` and require the package:
 
 ```elisp
-(add-to-list 'load-path "/usr/local/share/emacs/site-lisp/howm-todo")
+(add-to-list 'load-path "/usr/local/share/emacs/site-lisp/howm-todo-el")
 (require 'howm-todo)
 ```
 
@@ -57,7 +62,7 @@ After install, add the install directory to `load-path` and require the package:
 (straight-use-package
  '(howm-todo :type git
              :host github
-             :repo "blaine-mooers/howm-todo"))
+             :repo "MooersLab/howm-todo-el"))
 ```
 
 ### use-package with straight
@@ -66,7 +71,7 @@ After install, add the install directory to `load-path` and require the package:
 (use-package howm-todo
   :straight (howm-todo :type git
                        :host github
-                       :repo "blaine-mooers/howm-todo")
+                       :repo "MooersLab/howm-todo-el")
   :commands (howm-todo-prioritize-region
              howm-todo-strip-region
              howm-todo-sort-region
@@ -203,3 +208,9 @@ The accompanying documentation is licensed under the GNU Free Documentation Lice
 
 Blaine Mooers, Department of Biochemistry and Physiology, University of Oklahoma Health Campus.
 Email: blaine-mooers@ou.edu
+
+## Funding
+
+- NIH: R01 CA242845, R01 AI088011
+- NIH: P30 CA225520 (PI: R. Mannel); P30 GM145423 (PI: A. West)
+- 
