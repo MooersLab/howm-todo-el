@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Emacs](https://img.shields.io/badge/Emacs-27.1%2B-purple.svg)](https://www.gnu.org/software/emacs/)
 [![Made with Org](https://img.shields.io/badge/Made_with-Emacs_Lisp-7F5AB6.svg)](https://www.gnu.org/software/emacs/manual/html_node/elisp/index.html)
-[![howm](https://img.shields.io/badge/howm-todo-el-0.1.x-green.svg)](https://kaorahi.github.io/howm-todo-el/)
+[![howm](https://img.shields.io/badge/howm-1.4.x-green.svg)](https://kaorahi.github.io/howm/)
 
 Cross-compatible TODO prioritization for [Howm](https://kaorahi.github.io/howm/) and Org-mode.
 
