@@ -1,0 +1,378 @@
+\input texinfo  @c -*- mode: texinfo; coding: utf-8 -*-
+@c %**start of header
+@setfilename howm-todo.info
+@settitle howm-todo @value{VERSION}
+@documentencoding UTF-8
+@documentlanguage en
+@set VERSION 0.1.0
+@set UPDATED 2026-05-16
+@c %**end of header
+
+@copying
+This manual is for howm-todo, version @value{VERSION}, last updated
+@value{UPDATED}.
+
+Copyright @copyright{} 2026 Blaine Mooers.
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts.
+@end quotation
+
+The howm-todo Emacs Lisp package is free software: you can redistribute
+it and/or modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+@end copying
+
+@dircategory Emacs
+@direntry
+* howm-todo: (howm-todo).       Prioritized TODO items for Howm and Org-mode.
+@end direntry
+
+@titlepage
+@title howm-todo
+@subtitle Prioritized TODO items for Howm and Org-mode
+@subtitle Version @value{VERSION}
+@author Blaine Mooers @email{blaine-mooers@@ou.edu}
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top howm-todo
+
+@insertcopying
+@end ifnottex
+
+@menu
+* Introduction::                What howm-todo does and why.
+* Installation::                Manual install, straight.el, use-package.
+* Concepts::                    Priority cookies and tag conventions.
+* Commands::                    The five interactive commands.
+* Customization::               User-options exposed by the package.
+* SQLite Project Database::     Schema, detection, and backends.
+* Tag Merging::                 How project tags compose with existing tags.
+* Keybindings::                 Suggested key map.
+* Testing::                     Running the ERT suite.
+* GNU Free Documentation License::
+* Index::
+@end menu
+
+@node Introduction
+@chapter Introduction
+
+@cindex introduction
+@cindex Howm
+@cindex Org-mode
+
+The @code{howm-todo} package provides cross-compatible TODO
+prioritization that works in both @uref{https://kaorahi.github.io/howm/, Howm}
+notes and in Org-mode files.  Org-mode picks up the literal keyword
+@code{TODO} in its agenda views, and Howm leaves the line alone, so a
+single marker form serves both tools.
+
+The marker takes the form @code{TODO [XY]}.  @code{X} is an uppercase
+letter that names a priority group.  @code{Y} is a non-negative integer
+that ranks the item inside the group.  A larger @code{Y} means lower
+priority, so @code{[A1]} outranks @code{[A2]} which outranks
+@code{[A44]} which outranks @code{[B1]}.
+
+The package supports three workflows.
+
+@enumerate
+@item
+Selecting a region of manually ordered items and adding @code{TODO [XY]}
+markers across them.  Blank lines separate priority groups.
+
+@item
+Sorting an already-marked region by @code{[XY]} priority.
+
+@item
+Stripping markers from a region so the items can be re-prioritized the
+next day.
+@end enumerate
+
+A fourth workflow attaches an Org-style @code{:project:} tag to a marked
+line by reading project names from a SQLite database the user
+maintains for time tracking.
+
+@node Installation
+@chapter Installation
+
+@cindex installation
+@cindex Makefile
+@cindex install-info
+
+@section Manual install with the Makefile
+
+The simplest path is to clone or copy the source tree and run:
+
+@example
+make compile
+make info
+sudo make install
+@end example
+
+@noindent
+By default the package installs into
+@file{/usr/local/share/emacs/site-lisp/howm-todo} and the info file
+installs into @file{/usr/local/share/info}.  Override @code{PREFIX},
+@code{ELISPDIR}, or @code{INFODIR} on the command line to install
+elsewhere.
+
+@example
+make install PREFIX=$HOME/.local
+@end example
+
+After install, add the install directory to @code{load-path} and call
+@code{require}:
+
+@lisp
+(add-to-list 'load-path "/usr/local/share/emacs/site-lisp/howm-todo")
+(require 'howm-todo)
+@end lisp
+
+@section straight.el
+
+@lisp
+(straight-use-package
+ '(howm-todo :type git
+             :host github
+             :repo "blaine-mooers/howm-todo"))
+@end lisp
+
+@section use-package with straight
+
+@lisp
+(use-package howm-todo
+  :straight (howm-todo :type git
+                       :host github
+                       :repo "blaine-mooers/howm-todo")
+  :commands (howm-todo-prioritize-region
+             howm-todo-strip-region
+             howm-todo-sort-region
+             howm-todo-add-project-tag
+             howm-todo-tag-region)
+  :custom
+  (howm-todo-db-path "~/60003TimeTracking/cb/tenKprojects.db"))
+@end lisp
+
+@node Concepts
+@chapter Concepts
+
+@cindex priority cookie
+@cindex group letter
+
+A @dfn{priority cookie} is the bracketed text @code{[XY]} that follows
+the @code{TODO} keyword.
+
+@table @asis
+@item @code{X}, the @dfn{group letter}
+A single uppercase letter from @code{A} through @code{Z}.  Groups model
+coarse priority bands.  @code{A} is the most urgent.
+
+@item @code{Y}, the @dfn{rank}
+A non-negative integer.  Smaller is higher priority.  @code{Y} may have
+one or more digits.  The package sorts numerically, so @code{C2}
+outranks @code{C10} which outranks @code{C100}.
+@end table
+
+@cindex tag, Org-style
+
+The @dfn{project tag} is an Org-style @code{:tag:} block appended to
+the end of a marked line.  When the line already ends with one or more
+@code{:foo:bar:} tags, the new tag is merged into that block as
+@code{:foo:bar:new:} rather than starting a second block.
+
+@node Commands
+@chapter Commands
+
+@cindex commands
+
+@deffn Command howm-todo-prioritize-region beg end
+Add @code{TODO [XY]} prefixes to every non-empty line in the region
+between @var{beg} and @var{end}.  Blank lines separate priority groups,
+so the first contiguous block of non-empty lines is labeled @code{A1},
+@code{A2}, @code{A3}, the second block becomes @code{B1}, @code{B2},
+and so on.  Any pre-existing @code{TODO [XY]} markers in the region are
+stripped first, so the command is idempotent and safe to run more than
+once.  Leading whitespace on each line is preserved.
+@end deffn
+
+@deffn Command howm-todo-strip-region beg end
+Remove every @code{TODO [XY]} marker from each line between @var{beg}
+and @var{end}.  Leading whitespace is preserved.  Use this command
+before re-prioritizing items the next day.
+@end deffn
+
+@deffn Command howm-todo-sort-region beg end
+Sort the lines between @var{beg} and @var{end} by their @code{TODO
+[XY]} priority.  Lines that have no marker sink to the end of the
+region and keep their original relative order.  The sort is stable
+among lines that share the same priority cookie.
+@end deffn
+
+@deffn Command howm-todo-add-project-tag
+Append an Org-style @code{:project:} tag to the end of the current
+@code{TODO} line.  The project name is read from the SQLite database
+referenced by @code{howm-todo-db-path} through
+@code{completing-read}.  When the line already ends with a
+@code{:foo:bar:} block, the new tag is merged into that block.  When
+the project tag is already present, the command is a no-op.  Signals
+an error when the current line has no @code{TODO [XY]} marker.
+@end deffn
+
+@deffn Command howm-todo-tag-region beg end
+Walk every line between @var{beg} and @var{end} and call
+@code{howm-todo-add-project-tag} on each line that carries a @code{TODO
+[XY]} marker.  Unmarked lines are skipped.
+@end deffn
+
+@node Customization
+@chapter Customization
+
+@cindex customization
+
+@defopt howm-todo-db-path
+Absolute path to the SQLite database that holds project metadata.
+
+Default: @file{~/60003TimeTracking/cb/tenKprojects.db}.
+@end defopt
+
+@defopt howm-todo-db-table
+Table in the database that holds the project rows.  When @code{nil},
+@code{howm-todo} inspects every table in the database and picks the
+first one whose schema includes a column named by
+@code{howm-todo-db-column}.
+
+Default: @code{nil} (auto-detect).
+@end defopt
+
+@defopt howm-todo-db-column
+Column name to read project names from.
+
+Default: @code{"ProjectDirectory"}.
+@end defopt
+
+@defopt howm-todo-keyword
+Leading keyword on a prioritized line.  Both Howm and Org-mode
+recognize the literal text @code{TODO} at the start of a line.
+Changing this value lets you adopt a different word without modifying
+the package.
+
+Default: @code{"TODO"}.
+@end defopt
+
+@defopt howm-todo-tag-use-basename
+When non-@code{nil}, the Org tag is built from the basename of the
+project path returned by the database.  When @code{nil}, the full path
+is sanitized into a tag.
+
+Default: @code{t}.
+@end defopt
+
+@node SQLite Project Database
+@chapter SQLite Project Database
+
+@cindex SQLite
+@cindex tenKprojects.db
+@cindex backend
+
+The package prefers the built-in @code{sqlite} library shipped with
+Emacs 29 or newer compiled with @code{--with-sqlite3}.  When the
+built-in library is unavailable, the package falls back to the
+@command{sqlite3} command-line shell.  Either backend is enough.
+
+The default expected schema looks like:
+
+@example
+CREATE TABLE projects (
+    id               INTEGER PRIMARY KEY,
+    ProjectDirectory TEXT
+);
+@end example
+
+@noindent
+The table name is not significant when @code{howm-todo-db-table} is
+@code{nil}; the package detects whichever table contains the
+@code{ProjectDirectory} column.  If you keep your projects in a
+different column, set @code{howm-todo-db-column}.  If multiple tables
+contain that column, set @code{howm-todo-db-table} explicitly to pin
+detection.
+
+Project names are de-duplicated and sorted before they are presented to
+@code{completing-read}, so the picker is consistent regardless of how
+many duplicate rows you have in the table.
+
+@node Tag Merging
+@chapter Tag Merging
+
+@cindex tag merging
+
+@code{howm-todo-add-project-tag} preserves any Org-style tag block that
+already trails the line.
+
+@multitable @columnfractions 0.5 0.5
+@headitem Before @tab After (adding @code{garden})
+@item @code{TODO [A1] mow lawn} @tab @code{TODO [A1] mow lawn :garden:}
+@item @code{TODO [A1] mow lawn :home:} @tab @code{TODO [A1] mow lawn :home:garden:}
+@item @code{TODO [A1] mow lawn :home:outdoor:} @tab @code{TODO [A1] mow lawn :home:outdoor:garden:}
+@item @code{TODO [A1] mow lawn :garden:} @tab @code{TODO [A1] mow lawn :garden:} (no change)
+@end multitable
+
+@node Keybindings
+@chapter Keybindings
+
+@cindex keybindings
+
+The package does not bind any keys by default.  The following bindings
+are a reasonable starting point.
+
+@lisp
+(define-key global-map (kbd "C-c j p") #'howm-todo-prioritize-region)
+(define-key global-map (kbd "C-c j s") #'howm-todo-strip-region)
+(define-key global-map (kbd "C-c j o") #'howm-todo-sort-region)
+(define-key global-map (kbd "C-c j t") #'howm-todo-add-project-tag)
+(define-key global-map (kbd "C-c j T") #'howm-todo-tag-region)
+@end lisp
+
+@node Testing
+@chapter Testing
+
+@cindex testing
+@cindex ERT
+
+Run the test suite from the source directory:
+
+@example
+make test
+@end example
+
+@noindent
+The Makefile invokes Emacs in batch mode and runs the suite from
+@file{howm-todo-tests.el}.  SQLite-related tests are skipped
+automatically when neither the built-in sqlite library nor the
+@command{sqlite3} shell is on @code{PATH}.
+
+@node GNU Free Documentation License
+@appendix GNU Free Documentation License
+
+This documentation is distributed under the terms of the GNU Free
+Documentation License, Version 1.3 or any later version published by
+the Free Software Foundation.  See
+@uref{https://www.gnu.org/licenses/fdl-1.3.html} for the full text.
+
+@node Index
+@unnumbered Index
+
+@printindex cp
+
+@bye
