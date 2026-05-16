@@ -79,7 +79,7 @@ After install, add the install directory to `load-path` and require the package:
              howm-todo-add-project-tag
              howm-todo-tag-region)
   :custom
-  (howm-todo-db-path "~/60003TimeTracking/cb/tenKprojects.db"))
+  (howm-todo-db-path "~/6003TimeTracking/cb/tenKprojects.db"))
 ```
 
 ## Configuration
